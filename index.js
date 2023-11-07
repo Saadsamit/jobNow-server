@@ -1,9 +1,17 @@
 const express = require("express");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const app = express();
 const port = process.env.PORT || 5000;
+
+app.use(
+  cors({
+    origin: ["http://localhost:5173"],
+    credentials: true,
+  })
+);
+app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_KEY}@cluster0.amhrtlq.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -25,8 +33,18 @@ async function run() {
 
     // Send a ping to confirm a successful connection
     app.get("/api/v1/allJobs", async (req, res) => {
-      const alljobs =await allJobsCollection.find().toArray()
+      let qurey = {};
+      if (req.query.category) {
+        qurey = { category: req.query.category };
+      }
+      const alljobs = await allJobsCollection.find(qurey).toArray();
       res.send(alljobs);
+    });
+    app.get("/api/v1/Job-detail/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const jobDetail = await allJobsCollection.findOne(query);
+      res.send(jobDetail);
     });
     await client.db("admin").command({ ping: 1 });
     console.log(
