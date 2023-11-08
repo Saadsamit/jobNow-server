@@ -37,6 +37,12 @@ async function run() {
       if (req.query.category) {
         qurey = { category: req.query.category };
       }
+      if (req.query.search?.length > 0) {
+        // qurey = { category: req.query.category };
+        qurey = {
+          title: {$regex: req.query.search, $options: 'i'}
+        }
+      }
       const alljobs = await allJobsCollection.find(qurey).toArray();
       res.send(alljobs);
     });
