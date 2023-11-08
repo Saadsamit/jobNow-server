@@ -40,11 +40,19 @@ async function run() {
       if (req.query.search?.length > 0) {
         // qurey = { category: req.query.category };
         qurey = {
-          title: {$regex: req.query.search, $options: 'i'}
-        }
+          title: { $regex: req.query.search, $options: "i" },
+        };
       }
       const alljobs = await allJobsCollection.find(qurey).toArray();
       res.send(alljobs);
+    });
+    app.get("/api/v1/allJobs/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = {
+        email,
+      };
+      const FindMyJob = await allJobsCollection.find(query).toArray();
+      res.send(FindMyJob);
     });
     app.get("/api/v1/Job-detail/:id", async (req, res) => {
       const id = req.params.id;
@@ -52,10 +60,34 @@ async function run() {
       const jobDetail = await allJobsCollection.findOne(query);
       res.send(jobDetail);
     });
-    app.post('/api/v1/add-job',async(req,res)=>{
+    app.post("/api/v1/add-job", async (req, res) => {
+      const data = req.body;
+      const addJob = await allJobsCollection.insertOne(data);
+      res.send(addJob);
+    });
+    app.patch('/api/v1/update-job/:id',async(req,res)=>{
+      const id = req.params.id
       const data = req.body
-      const addJob = await allJobsCollection.insertOne(data)
-      res.send(addJob)
+      const query = {
+        _id: new ObjectId(id)
+      }
+      const options = { upsert: true };
+    const updateDoc = {
+      $set: {
+        imgUrl: data.imgUrl,
+        title: data.title,
+        category: data.category,
+        salary: data.salary,
+        description: data.description,
+        jobDeadline: data.jobDeadline,
+      },
+    };
+    const updateJob = await allJobsCollection.updateOne(query,updateDoc,options)
+    res.send(updateJob)
+    })
+    app.delete("/api/v1/delete-job:id",(req,res)=>{
+      const id = req.params.id
+      
     })
     await client.db("admin").command({ ping: 1 });
     console.log(
