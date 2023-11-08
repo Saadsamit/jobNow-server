@@ -30,6 +30,7 @@ async function run() {
     await client.connect();
     const myDb = client.db("jobNow");
     const allJobsCollection = myDb.collection("allJobs");
+    const applyJobsCollection = myDb.collection("applyJobs");
 
     // Send a ping to confirm a successful connection
     app.get("/api/v1/allJobs", async (req, res) => {
@@ -65,30 +66,74 @@ async function run() {
       const addJob = await allJobsCollection.insertOne(data);
       res.send(addJob);
     });
-    app.patch('/api/v1/update-job/:id',async(req,res)=>{
-      const id = req.params.id
-      const data = req.body
+    app.patch("/api/v1/update-job/:id", async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
       const query = {
-        _id: new ObjectId(id)
-      }
+        _id: new ObjectId(id),
+      };
       const options = { upsert: true };
-    const updateDoc = {
-      $set: {
-        imgUrl: data.imgUrl,
-        title: data.title,
-        category: data.category,
-        salary: data.salary,
-        description: data.description,
-        jobDeadline: data.jobDeadline,
-      },
-    };
-    const updateJob = await allJobsCollection.updateOne(query,updateDoc,options)
-    res.send(updateJob)
-    })
-    app.delete("/api/v1/delete-job:id",(req,res)=>{
-      const id = req.params.id
+      const updateDoc = {
+        $set: {
+          imgUrl: data.imgUrl,
+          title: data.title,
+          category: data.category,
+          salary: data.salary,
+          description: data.description,
+          jobDeadline: data.jobDeadline,
+        },
+      };
+      const updateJob = await allJobsCollection.updateOne(
+        query,
+        updateDoc,
+        options
+      );
+      res.send(updateJob);
+    });
+    app.patch("/api/v1/apply/:id", async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      const query = {
+        _id: new ObjectId(id),
+      };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          apply: data.apply,
+        },
+      };
+      const updateJob = await allJobsCollection.updateOne(
+        query,
+        updateDoc,
+        options
+      );
+      res.send(updateJob);
+    });
+    app.delete("/api/v1/delete-job/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = {
+        _id: new ObjectId(id),
+      };
+      const deleteJob = await allJobsCollection.deleteOne(query);
+      res.send(deleteJob);
+    });
+    app.post("/api/v1/apply-job", async (req, res) => {
+      const data = req.body;
+      const query = {
+        email: data.email
+      }
+      const queryEmail = {
+        email: {$eq: data?.email},
+        applyData: {$eq: data?.applyData}
+      }
+      const FindEmail = await applyJobsCollection.findOne(queryEmail)
+      if(FindEmail?._id){
+        return res.status(409).send({message: 'already exists'})
+      }
       
-    })
+      const applyJob = await applyJobsCollection.insertOne(data)
+      res.send(applyJob)
+    });
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
