@@ -117,6 +117,20 @@ async function run() {
       const deleteJob = await allJobsCollection.deleteOne(query);
       res.send(deleteJob);
     });
+    app.get('/api/v1/applied-job',async(req,res)=>{
+      const email = req.query.email
+      const query = {
+        email: {$eq: email }
+      }
+      const applyJob = await applyJobsCollection.find(query).toArray()
+      const applyId =  applyJob.map((apply=>new ObjectId(apply.applyData)))
+      const queryApply = {
+        _id: {$in: applyId}
+      }
+      const FindData = await allJobsCollection.find(queryApply).toArray()
+      res.send(FindData)
+
+    })
     app.post("/api/v1/apply-job", async (req, res) => {
       const data = req.body;
       const query = {
