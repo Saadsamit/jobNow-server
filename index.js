@@ -9,7 +9,7 @@ const port = process.env.PORT || 5000;
 
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: ["https://jobnow-8f105.web.app","https://jobnow-8f105.firebaseapp.com"],
     credentials: true,
   })
 );
@@ -41,7 +41,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     const myDb = client.db("jobNow");
     const allJobsCollection = myDb.collection("allJobs");
     const applyJobsCollection = myDb.collection("applyJobs");
@@ -49,15 +49,25 @@ async function run() {
     // Send a ping to confirm a successful connection
     app.post('/api/v1/jwt',async (req,res)=>{
       const user = req.body;
-      console.log(process.env.ACCESS_TOKEN_SERCRET);
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SERCRET, {
         expiresIn: "1h",
       });
       res
-        .cookie("token", token, {
-          httpOnly: true,
-          secure: false,
-        })
+        .cookie("token",
+        token,
+        {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+        maxAge: 60 * 60 * 1000
+        }
+        )
+        // res.clearCookie(
+        // "token",
+        // {
+        // maxAge: 0,
+        // secure: true
+        // })
         .send({ success: true });
     })
     app.get("/api/v1/allJobs", async (req, res) => {
