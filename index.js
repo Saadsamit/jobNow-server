@@ -9,25 +9,28 @@ const port = process.env.PORT || 5000;
 
 app.use(
   cors({
-    origin: ["https://jobnow-8f105.web.app","https://jobnow-8f105.firebaseapp.com"],
+    origin: [
+      "https://jobnow-8f105.web.app",
+      "https://jobnow-8f105.firebaseapp.com"
+    ],
     credentials: true,
   })
 );
 app.use(express.json());
 app.use(cookieParser());
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_KEY}@cluster0.amhrtlq.mongodb.net/?retryWrites=true&w=majority`;
-const verifyToken = async (req,res,next) => {
+const verifyToken = async (req, res, next) => {
   const token = req.cookies?.token;
-  if(!token){
-    return res.status(401).send({ message: "not authorized" })
+  if (!token) {
+    return res.status(401).send({ message: "not authorized" });
   }
-  jwt.verify(token, process.env.ACCESS_TOKEN_SERCRET,(err, decoded)=>{
-    if(err){
-      return res.status(401).sent({ message: "unauthorized access" })
+  jwt.verify(token, process.env.ACCESS_TOKEN_SERCRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).sent({ message: "unauthorized access" });
     }
-    req.user = decoded
-    next()
-  })
+    req.user = decoded;
+    next();
+  });
 };
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -47,21 +50,18 @@ async function run() {
     const applyJobsCollection = myDb.collection("applyJobs");
 
     // Send a ping to confirm a successful connection
-    app.post('/api/v1/jwt',async (req,res)=>{
+    app.post("/api/v1/jwt", async (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SERCRET, {
-        expiresIn: "1h",
+        expiresIn: "365d",
       });
       res
-        .cookie("token",
-        token,
-        {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        maxAge: 60 * 60 * 1000
-        }
-        )
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: true,
+          sameSite: "none",
+          maxAge: 60 * 60 * 1000,
+        })
         // res.clearCookie(
         // "token",
         // {
@@ -69,7 +69,7 @@ async function run() {
         // secure: true
         // })
         .send({ success: true });
-    })
+    });
     app.get("/api/v1/allJobs", async (req, res) => {
       let qurey = {};
       if (req.query.category) {
@@ -84,8 +84,11 @@ async function run() {
       const alljobs = await allJobsCollection.find(qurey).toArray();
       res.send(alljobs);
     });
-    app.get("/api/v1/allJobs/:email",verifyToken, async (req, res) => {
+    app.get("/api/v1/allJobs/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
+      if (req.user.email !== email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
       const query = {
         email,
       };
@@ -98,12 +101,12 @@ async function run() {
       const jobDetail = await allJobsCollection.findOne(query);
       res.send(jobDetail);
     });
-    app.post("/api/v1/add-job",verifyToken, async (req, res) => {
+    app.post("/api/v1/add-job", verifyToken, async (req, res) => {
       const data = req.body;
       const addJob = await allJobsCollection.insertOne(data);
       res.send(addJob);
     });
-    app.patch("/api/v1/update-job/:id",verifyToken, async (req, res) => {
+    app.patch("/api/v1/update-job/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const data = req.body;
       const query = {
@@ -127,7 +130,7 @@ async function run() {
       );
       res.send(updateJob);
     });
-    app.patch("/api/v1/apply/:id",verifyToken, async (req, res) => {
+    app.patch("/api/v1/apply/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const data = req.body;
       const query = {
@@ -146,7 +149,7 @@ async function run() {
       );
       res.send(updateJob);
     });
-    app.delete("/api/v1/delete-job/:id",verifyToken, async (req, res) => {
+    app.delete("/api/v1/delete-job/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = {
         _id: new ObjectId(id),
@@ -154,36 +157,35 @@ async function run() {
       const deleteJob = await allJobsCollection.deleteOne(query);
       res.send(deleteJob);
     });
-    app.get('/api/v1/applied-job',verifyToken, async(req,res)=>{
-      const email = req.query.email
+    app.get("/api/v1/applied-job", verifyToken, async (req, res) => {
+      const email = req.query.email;
       const query = {
-        email: {$eq: email }
-      }
-      const applyJob = await applyJobsCollection.find(query).toArray()
-      const applyId =  applyJob.map((apply=>new ObjectId(apply.applyData)))
+        email: { $eq: email },
+      };
+      const applyJob = await applyJobsCollection.find(query).toArray();
+      const applyId = applyJob.map((apply) => new ObjectId(apply.applyData));
       const queryApply = {
-        _id: {$in: applyId}
-      }
-      const FindData = await allJobsCollection.find(queryApply).toArray()
-      res.send(FindData)
-
-    })
-    app.post("/api/v1/apply-job",verifyToken, async (req, res) => {
+        _id: { $in: applyId },
+      };
+      const FindData = await allJobsCollection.find(queryApply).toArray();
+      res.send(FindData);
+    });
+    app.post("/api/v1/apply-job", verifyToken, async (req, res) => {
       const data = req.body;
       const query = {
-        email: data.email
-      }
+        email: data.email,
+      };
       const queryEmail = {
-        email: {$eq: data?.email},
-        applyData: {$eq: data?.applyData}
+        email: { $eq: data?.email },
+        applyData: { $eq: data?.applyData },
+      };
+      const FindEmail = await applyJobsCollection.findOne(queryEmail);
+      if (FindEmail?._id) {
+        return res.status(409).send({ message: "already exists" });
       }
-      const FindEmail = await applyJobsCollection.findOne(queryEmail)
-      if(FindEmail?._id){
-        return res.status(409).send({message: 'already exists'})
-      }
-      
-      const applyJob = await applyJobsCollection.insertOne(data)
-      res.send(applyJob)
+
+      const applyJob = await applyJobsCollection.insertOne(data);
+      res.send(applyJob);
     });
     await client.db("admin").command({ ping: 1 });
     console.log(
